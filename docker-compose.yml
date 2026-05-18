@@ -1,0 +1,57 @@
+services:
+  database:
+    image: mysql:8.0
+    container_name: cv-database
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: cv_db
+      MYSQL_USER: cv_user
+      MYSQL_PASSWORD: cv_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_password"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - cv_network
+
+  backend:
+    image: brigith/espinoza-backend:v1
+    container_name: cv-backend
+    restart: always
+    environment:
+      PORT: 4000
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_USER: cv_user
+      DB_PASSWORD: cv_password
+      DB_NAME: cv_db
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    networks:
+      - cv_network
+
+  frontend:
+    image: brigith/espinoza-frontend:v1
+    container_name: cv-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    networks:
+      - cv_network
+
+volumes:
+  mysql_data:
+
+networks:
+  cv_network:
+    driver: bridge
